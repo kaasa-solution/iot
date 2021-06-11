@@ -104,7 +104,7 @@ namespace System.Device.I2c
 
             fixed (byte* readBufferPointer = buffer)
             {
-                WriteReadCore((ushort)deviceAddress, null, readBufferPointer, 0, (ushort)buffer.Length);
+                WriteReadCore((ushort)deviceAddress, null, readBufferPointer, 0, (ushort)buffer.Length, false, true);
             }
         }
 
@@ -122,7 +122,7 @@ namespace System.Device.I2c
 
             fixed (byte* writeBufferPointer = buffer)
             {
-                WriteReadCore((ushort)deviceAddress, writeBufferPointer, null, (ushort)buffer.Length, 0);
+                WriteReadCore((ushort)deviceAddress, writeBufferPointer, null, (ushort)buffer.Length, 0, true, false);
             }
         }
 
@@ -152,19 +152,24 @@ namespace System.Device.I2c
             {
                 fixed (byte* readBufferPointer = readBuffer)
                 {
-                    WriteReadCore((ushort)deviceAddress, writeBufferPointer, readBufferPointer, (ushort)writeBuffer.Length, (ushort)readBuffer.Length);
+                    WriteReadCore((ushort)deviceAddress, writeBufferPointer, readBufferPointer, (ushort)writeBuffer.Length, (ushort)readBuffer.Length, true, true);
                 }
             }
         }
 
-        protected virtual unsafe void WriteReadCore(ushort deviceAddress, byte* writeBuffer, byte* readBuffer, ushort writeBufferLength, ushort readBufferLength)
+        protected virtual unsafe void WriteReadCore(ushort deviceAddress, byte* writeBuffer, byte* readBuffer, ushort writeBufferLength, ushort readBufferLength, bool write, bool read)
         {
             // Allocating space for 2 messages in case we want to read and write on the same call.
             i2c_msg* messagesPtr = stackalloc i2c_msg[2];
             int messageCount = 0;
 
-            if (writeBuffer != null)
+            if (write)
             {
+                if (writeBuffer == null && writeBufferLength != 0)
+                {
+                    throw new ArgumentNullException(nameof(writeBuffer));
+                }
+
                 messagesPtr[messageCount++] = new i2c_msg()
                 {
                     flags = I2cMessageFlags.I2C_M_WR,
@@ -174,8 +179,13 @@ namespace System.Device.I2c
                 };
             }
 
-            if (readBuffer != null)
+            if (read)
             {
+                if (readBuffer == null && readBufferLength != 0)
+                {
+                    throw new ArgumentNullException(nameof(readBuffer));
+                }
+
                 messagesPtr[messageCount++] = new i2c_msg()
                 {
                     flags = I2cMessageFlags.I2C_M_RD,

@@ -13,7 +13,7 @@ namespace System.Device.I2c
         {
         }
 
-        protected override unsafe void WriteReadCore(ushort deviceAddress, byte* writeBuffer, byte* readBuffer, ushort writeBufferLength, ushort readBufferLength)
+        protected override unsafe void WriteReadCore(ushort deviceAddress, byte* writeBuffer, byte* readBuffer, ushort writeBufferLength, ushort readBufferLength, bool write, bool read)
         {
             int result = Interop.ioctl(BusFileDescriptor, (uint)I2cSettings.I2C_SLAVE_FORCE, deviceAddress);
             if (result < 0)
@@ -21,8 +21,13 @@ namespace System.Device.I2c
                 throw new IOException($"Error {Marshal.GetLastWin32Error()} performing I2C data transfer.");
             }
 
-            if (writeBuffer != null)
+            if (write)
             {
+                if (writeBuffer == null && writeBufferLength != 0)
+                {
+                    throw new ArgumentNullException(nameof(writeBuffer));
+                }
+
                 result = Interop.write(BusFileDescriptor, new IntPtr(writeBuffer), writeBufferLength);
                 if (result < 0)
                 {
@@ -30,8 +35,13 @@ namespace System.Device.I2c
                 }
             }
 
-            if (readBuffer != null)
+            if (read)
             {
+                if (readBuffer == null && readBufferLength != 0)
+                {
+                    throw new ArgumentNullException(nameof(readBuffer));
+                }
+
                 result = Interop.read(BusFileDescriptor, new IntPtr(readBuffer), readBufferLength);
                 if (result < 0)
                 {
